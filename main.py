@@ -20,7 +20,13 @@ MESSAGE_LIMIT = 30000
 # To'xtatish bayrog'i (har bir guruh uchun alohida)
 stop_flags = {}
 
-client = TelegramClient(SESSION_NAME, API_ID, API_HASH)
+client = TelegramClient(
+    SESSION_NAME, 
+    API_ID, 
+    API_HASH,
+    connection_retries=None, # Internet o'chsa qayta ulanishga harakat qiladi
+    retry_delay=5            # Har 5 soniyada qayta urinish
+)
 
 @client.on(events.NewMessage(pattern='/start'))
 async def start_handler(event):
@@ -237,8 +243,20 @@ async def handler(event):
 print("Bot ishga tushdi. Guruhga kiring va /aktiv deb yozing.")
 
 async def main():
-    await client.start(bot_token=BOT_TOKEN)
-    await client.run_until_disconnected()
+    # Uzluksiz ishlash uchun qayta ulanish tizimi
+    while True:
+        try:
+            await client.start(bot_token=BOT_TOKEN)
+            await client.run_until_disconnected()
+        except Exception as e:
+            print(f"⚠️ Xatolik yuz berdi (Aloqa uzildi): {e}")
+            print("🔄 5 soniyadan keyin qayta ulanishga harakat qilamiz...")
+            await asyncio.sleep(5)
+        except asyncio.CancelledError:
+            break
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\n🛑 Bot foydalanuvchi tomonidan to'xtatildi.")
